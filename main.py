@@ -202,21 +202,34 @@ def approx_is_square(approx, SIDE_VS_SIDE_THRESHOLD=0.70, ANGLE_THRESHOLD=20, RO
             return False
 
     return True
-        
-
-
 
 def process(img):                                                                                                                                                       
     #Process an bgr image to binary 
     #kernel = np.ones((3,3),np.uint8) this is an alternative way to create kernel
+    #img1= cv2.pyrMeanShiftFiltering(img, 5, 40)
+    #img1 = cv2.medianBlur(img, 5)
+    #img1 = cv2.GaussianBlur(img1, (3, 3), 0)
+    blur = cv2.blur(img, (3, 3))
+    # 方框滤波（归一化）=均值滤波
+    box1 = cv2.boxFilter(img, -1, (3, 3), normalize=True)
+    # 方框滤波（不归一化）
+    box2 = cv2.boxFilter(img, -1, (3, 3), normalize=False)
+    # 高斯滤波
+    # 用5*5的核进行卷积操作，但核上离中心像素近的参数大。
+    guassian = cv2.GaussianBlur(img, (5, 5), 1)
+    # 中值滤波
+    # 将某像素点周围5*5的像素点提取出来，排序，取中值写入此像素点。
+    img1 = cv2.medianBlur(img, 5)
+
+
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(2,2))
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) #Corresponding grayscale image to the input
-    binary = cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY_INV,11,5)
+    gray = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY) #Corresponding grayscale image to the input
+    binary = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY_INV,11,3)
     binary_blurred = cv2.medianBlur(binary,5)
-    binary_dilated = cv2.dilate(binary_blurred,kernel,iterations = 5)
+    binary_dilated = cv2.dilate(binary_blurred,kernel,iterations = 8)
     binary_inv = 255 - binary_dilated
 
-    return binary_inv
+    return binary_inv, gray
 
 
 def threadVideoGet(source=0):
@@ -239,7 +252,7 @@ def threadVideoGet(source=0):
         #frame = cv2.flip(frame,1)  #镜像
         #cube_range = frame[630:390, 865:631]
         cube_range = frame[390-10:630+10, 631-10:865+10]
-        img = process(cube_range)
+        img, gray = process(cube_range)
 
         
         recnum = 0;
@@ -250,7 +263,7 @@ def threadVideoGet(source=0):
         for cnt in contours:
             approx = cv2.approxPolyDP(cnt,0.12*cv2.arcLength(cnt,True),True)
             #cv2.drawContours(cube_range, approx, -1, (0, 0, 255), 3)
-            cv2.polylines(cube_range, [approx], True, (0, 0, 255), 2)
+            #cv2.polylines(cube_range, [approx], True, (0, 0, 255), 2)
             #cv2.polylines(img, [approx], True, (0, 0, 255), 2)
 
             x = approx.ravel()[0]
@@ -275,7 +288,7 @@ def threadVideoGet(source=0):
                 yavg = int((y1+y2)/2)
 
                 #cv2.drawContours(img, approx, -1, (0, 0, 255), 3)
-                cv2.polylines(img, [approx], True, (0, 0, 255), 2)
+                #cv2.polylines(img, [approx], True, (0, 0, 255), 2)
 
                 #if (recnum > 9): 
                    # break
@@ -294,11 +307,11 @@ def threadVideoGet(source=0):
                 '''
         print("**********************************88")
 
-        cv2.imshow("Video", cube_range)
+        #cv2.imshow("Video", gray)
         #cv2.imshow("Video", img)
         #cv2.imshow("Video", binary_dilated)
         #cv2.imshow("Video", frame)
-        #cv2.imshow("Video", cube_range)
+        cv2.imshow("Video", cube_range)
         cps.increment()
 
 threadVideoGet(source=0)
