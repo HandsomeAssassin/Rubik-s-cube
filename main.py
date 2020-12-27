@@ -232,6 +232,48 @@ def process(img):
     return binary_inv, gray
 
 
+def draw_aim(image,x1,y1,x2,y2,w,b,g,r):
+    #Draws a box aim on an image to tell the user where to put the rubik's cube
+    cv2.line(image,(x1,y1),(x1,y1+w),(b,g,r),2)
+    cv2.line(image,(x1,y1),(x1+w,y1),(b,g,r),2)
+
+    cv2.line(image,(x2,y1),(x2,y1+w),(b,g,r),2)
+    cv2.line(image,(x2,y1),(x2-w,y1),(b,g,r),2)
+        
+    cv2.line(image,(x1,y2),(x1,y2-w),(b,g,r),2)
+    cv2.line(image,(x1,y2),(x1+w,y2),(b,g,r),2)
+
+    cv2.line(image,(x2,y2),(x2,y2-w),(b,g,r),2)
+    cv2.line(image,(x2,y2),(x2-w,y2),(b,g,r),2)   
+
+
+def get_string(c_list):                                                                                                                                                 
+    """
+    Takes a list of (x,y) coordinates and arrange them in order from top left corner to bottom right
+    """
+
+    x = [0 for num in range(9)]
+    y = [0 for num in range(9)]
+    #cords = [[0 for col in range(2)] for row in range(9)]
+    for a in range(len(c_list)):
+        x[a] = c_list[a][0]
+        y[a] = c_list[a][1]
+    xmin = min(x)
+    xmax = max(x)
+
+    ymin = min(y)
+    ymax = max(y)
+
+    xavg = int((xmin+xmax)/2)
+    yavg = int((ymin+ymax)/2)
+
+    #cv2.rectangle(img,(xmin,ymin),(xmax,ymax),(100,100,100), 5)
+    string = [[xmin,ymin],[xavg,ymin],[xmax,ymin],[xmin,yavg],[xavg,yavg],[xmax,yavg],[xmin,ymax],[xavg,ymax],[xmax,ymax]]
+    #string = [[xmin,ymin],[xmax,ymax]]
+
+    return string
+
+
 def threadVideoGet(source=0):
     """
     Dedicated thread for grabbing video frames with VideoGet object.
@@ -249,13 +291,15 @@ def threadVideoGet(source=0):
         frame = video_getter.frame
         frame = putIterationsPerSec(frame, cps.countsPerSec())
         #cv2.rectangle(frame,(630, 390),(865, 631),(0,255,0),2)
-        #frame = cv2.flip(frame,1)  #镜像
+        frame = cv2.flip(frame,1)  #镜像
         #cube_range = frame[630:390, 865:631]
-        cube_range = frame[390-10:630+10, 631-10:865+10]
-        img, gray = process(cube_range)
+        #cube_range = frame #[390-10:630+10, 631-10:865+10]
+        #img, gray = process(cube_range)
+        img, gray = process(frame)
 
         
         recnum = 0;
+        cords = [[0 for col in range(2)] for row in range(9)]
         # findContours 会返回两个矩阵
         # contours  包含了每一个轮廓线
         # hierarchy 包含了对应轮廓线的阶级，也就是被多少其他轮廓线包含着
@@ -272,8 +316,8 @@ def threadVideoGet(source=0):
                 print("x", x)
                 print("y", y)
 
-            if (len(approx) == 4):
-                # and 245<x<395 and 105<y<255):
+            #if (len(approx) == 4):
+            if (len(approx) == 4 and 245<x<395 and 105<y<255):
                 #Approx has 4 (x,y) coordinates, where the first is the top left,and
                 #the third is the bottom right. Findind the mid point of these two coordinates
                 #will give me the center of the rectangle
@@ -290,28 +334,31 @@ def threadVideoGet(source=0):
                 #cv2.drawContours(img, approx, -1, (0, 0, 255), 3)
                 #cv2.polylines(img, [approx], True, (0, 0, 255), 2)
 
-                #if (recnum > 9): 
-                   # break
+                if (recnum > 9): 
+                    break
+
+                cords = list(cords)
+                cords[recnum-1] = [xavg,yavg]
 
                 if (approx_is_square(approx) == True):
                     print("!!!!!!!!!!!!!!11")
                     #cv2.circle(img,(xavg,yavg),15,(255, 0, 0),5)
-                    cv2.circle(cube_range,(xavg,yavg),15,(255, 0, 0),5)
-                ''' 
+                    #cv2.circle(cube_range,(xavg,yavg),15,(255, 0, 0),5)
+                    cv2.circle(frame,(xavg,yavg),15,(255, 0, 0),5)
                 if (recnum == 9 and approx_is_square(approx) == True):
                     string = get_string(cords)
                     color_string = get_average_color(image,string)
                     thecolor = get_color_string(color_string)
-                        
                     create_referrence_color(image,thecolor)  
-                '''
+
         print("**********************************88")
+        draw_aim(frame,245,105,395,255,50,30,30,30)
 
         #cv2.imshow("Video", gray)
         #cv2.imshow("Video", img)
         #cv2.imshow("Video", binary_dilated)
-        #cv2.imshow("Video", frame)
-        cv2.imshow("Video", cube_range)
+        cv2.imshow("Video", frame)
+        #cv2.imshow("Video", cube_range)
         cps.increment()
 
 threadVideoGet(source=0)
